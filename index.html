@@ -100,6 +100,13 @@
 
         window.addEventListener( 'resize', onWindowResize, false );
 
+        var socket = new WebSocket('ws://master.eve-emdr.com:9000/');
+
+        socket.onmessage = function (evt) {
+            var sid = JSON.parse(evt.data);
+            systems[sid].ping();
+        };
+
     }
 
     function onDocumentMouseDown( event ) {
@@ -153,7 +160,7 @@
     }
 
     function render() {
-        var change = (Date.now() - time) / 10000.0;
+        var change = (Date.now() - time) / 60000.0;
         time = Date.now();
         var k;
         for (k in systems) {
@@ -188,7 +195,7 @@
                     material = new THREE.ParticleBasicMaterial( { map: sprite, size: 15, vertexColors: true } );
 
                     colors[ i ] = new THREE.Color( 0xffffff );
-                    colors[ i ].setRGB( 1.0, 1.0, 1.0 );
+                    colors[ i ].setRGB( 0.25, 0.25, 0.25 );
 
                     systems[data[i].id] = {
                         id: data[i].id,
@@ -197,7 +204,7 @@
                         z: z,
                         name: data[i].name,
                         color: colors[i],
-                        lum: 1.0,
+                        lum: 0.25,
                         ping: function () {
                             this.color.setRGB(1.0,1.0,1.0);
                             this.lum = 1.0;
@@ -208,7 +215,7 @@
                 geometry.colors = colors;
 
                 material = new THREE.ParticleBasicMaterial( { map: sprite, size: 15, vertexColors: true } );
-                material.color.setRGB( 1.0, 1.0, 1.0 );
+
 
                 particles = new THREE.ParticleSystem( geometry, material );
                 particles.sortParticles = true;
