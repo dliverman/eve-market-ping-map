@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>three.js webgl - eve market map</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            background-color: #000000;
+            margin: 0px;
+            overflow: hidden;
+            font-family:Monospace;
+            font-size:13px;
+            text-align:center;
+            font-weight: bold;
+            text-align:center;
+        }
+
+        a {
+            color:#0078ff;
+        }
+
+        #info {
+            color:#fff;
+            position: absolute;
+            top: 0px; width: 100%;
+            padding: 5px;
+            z-index:100;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="info">
+    <a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> - eve market map
+</div>
+<script src="http://code.jquery.com/jquery-1.6.4.min.js"></script>
+<script src="js/Three.js"></script>
+
+<script src="js/Detector.js"></script>
+<script src="js/Stats.js"></script>
+
+<script>
+
+    if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+    var container, stats;
+    var camera, scene, renderer, particles, geometry, material, i, h, color, colors = [], sprite, size, x, y, z;
+    var lat = 0, lon = 0;
+    var systems = {};
+    var time = Date.now();
+
+    init();
+    animate();
+
+    loadsystem();
+
+    function init() {
+
+        container = document.createElement( 'div' );
+        document.body.appendChild( container );
+
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2( 0x000000, 0.0009 );
+
+        camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
+        camera.position.z = 500;
+        scene.add( camera );
+
+        //
+
+        renderer = new THREE.WebGLRenderer( { clearAlpha: 1 } );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        container.appendChild( renderer.domElement );
+
+        //
+
+        stats = new Stats();
+        stats.domElement.style.position = 'absolute';
+        stats.domElement.style.top = '0px';
+        container.appendChild( stats.domElement );
+
+        //
+
+        controls = new THREE.TrackballControls( camera );
+
+        controls.rotateSpeed = 1.0;
+        controls.zoomSpeed = 1.2;
+        controls.panSpeed = 0.8;
+
+        controls.noZoom = false;
+        controls.noPan = false;
+
+        controls.staticMoving = true;
+        controls.dynamicDampingFactor = 0.3;
+
+        controls.keys = [ 65, 83, 68 ];
+
+
+        window.addEventListener( 'resize', onWindowResize, false );
+
+    }
+
+    function onDocumentMouseDown( event ) {
+
+        event.preventDefault();
+
+        isUserInteracting = true;
+
+        onPointerDownPointerX = event.clientX;
+        onPointerDownPointerY = event.clientY;
+
+        onPointerDownLon = lon;
+        onPointerDownLat = lat;
+
+    }
+
+    function onDocumentMouseMove( event ) {
+
+        if ( isUserInteracting ) {
+
+            lon = ( onPointerDownPointerX - event.clientX ) * 0.1 + onPointerDownLon;
+            lat = ( event.clientY - onPointerDownPointerY ) * 0.1 + onPointerDownLat;
+
+        }
+    }
+
+    function onDocumentMouseUp( event ) {
+
+        isUserInteracting = false;
+
+    }
+
+    function onWindowResize( event ) {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize( window.innerWidth, window.innerHeight );
+
+    }
+
+    //
+
+    function animate() {
+
+        requestAnimationFrame( animate );
+
+        render();
+        stats.update();
+
+    }
+
+    function render() {
+        var change = (Date.now() - time) / 10000.0;
+        time = Date.now();
+        var k;
+        for (k in systems) {
+            if (systems[k].lum > 0.25) {
+                systems[k].lum -= change;
+                if (systems[k].lum < 0.25) { systems[k].lum = 0.25; }
+                systems[k].color.setRGB(systems[k].lum,systems[k].lum,systems[k].lum);
+            }
+        }
+        controls.update();
+        renderer.render( scene, camera );
+        stats.update();
+
+    }
+
+    function loadsystem() {
+        $.getJSON('json/systems.json', function(data) {
+                geometry = new THREE.Geometry();
+
+                sprite = THREE.ImageUtils.loadTexture( "textures/sprites/spark1.png" );
+
+                var i;
+                for (i in data)
+                {
+                    x = data[i].x / 2e15;
+                    y = data[i].y / 2e15;
+                    z = data[i].z / 2e15;
+
+                    vector = new THREE.Vector3( x, y, z );
+                    geometry.vertices.push( new THREE.Vertex( vector ) );
+
+                    material = new THREE.ParticleBasicMaterial( { map: sprite, size: 15, vertexColors: true } );
+
+                    colors[ i ] = new THREE.Color( 0xffffff );
+                    colors[ i ].setRGB( 1.0, 1.0, 1.0 );
+
+                    systems[data[i].id] = {
+                        id: data[i].id,
+                        x: x,
+                        y: y,
+                        z: z,
+                        name: data[i].name,
+                        color: colors[i],
+                        lum: 1.0,
+                        ping: function () {
+                            this.color.setRGB(1.0,1.0,1.0);
+                            this.lum = 1.0;
+                        }
+                    };
+                }
+
+                geometry.colors = colors;
+
+                material = new THREE.ParticleBasicMaterial( { map: sprite, size: 15, vertexColors: true } );
+                material.color.setRGB( 1.0, 1.0, 1.0 );
+
+                particles = new THREE.ParticleSystem( geometry, material );
+                particles.sortParticles = true;
+
+                scene.add( particles );
+        });
+    }
+
+</script>
+</body>
+</html>
