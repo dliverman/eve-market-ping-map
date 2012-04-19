@@ -1,0 +1,11 @@
+.idea
+*.pyc
+*.swp
+*.tmp
+*.log
+.DS_Store
+*.pid
+build
+dist
+*.egg-info
+MANIFEST
