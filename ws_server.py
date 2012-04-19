@@ -38,10 +38,15 @@ def websocket_app(environ, start_response):
         gevent.spawn(worker, subscriber.recv(), ws)
         gevent.sleep(0.1)
 
+print("Listening on port 9000...")
+
 server = pywsgi.WSGIServer(
     ("", 9000),
     websocket_app,
     handler_class=WebSocketHandler
 )
 
-server.serve_forever()
+try:
+    server.serve_forever()
+except KeyboardInterrupt:
+    print("Stopped.")
