@@ -33,8 +33,13 @@
 <body>
 
 <div id="info">
-    <a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> - eve market map
+    <a href="http://readthedocs.org/docs/eve-market-data-relay/en/latest/" target="_blank">EVE Market Data Relay</a>
+    - Relay Activity Map
+    <div id="connectionstatus">
+        Connecting to Relay
+    </div>
 </div>
+
 <script src="http://code.jquery.com/jquery-1.6.4.min.js"></script>
 <script src="js/Three.js"></script>
 
@@ -100,13 +105,24 @@
 
         window.addEventListener( 'resize', onWindowResize, false );
 
+        connect();
+
+    }
+
+    function connect() {
         var socket = new WebSocket('ws://master.eve-emdr.com:9000/');
 
+        socket.onopen = function () {
+            $('#connectionstatus').text("Connected");
+        };
         socket.onmessage = function (evt) {
             var sid = JSON.parse(evt.data);
             systems[sid].ping();
         };
-
+        socket.onclose = function () {
+            $('#connectionstatus').text("Connection Lost.  Reconnecting...");
+            setTimeout('connect()', 25000);
+        };
     }
 
     function onDocumentMouseDown( event ) {
@@ -214,7 +230,12 @@
 
                 geometry.colors = colors;
 
-                material = new THREE.ParticleBasicMaterial( { map: sprite, size: 15, vertexColors: true } );
+                material = new THREE.ParticleBasicMaterial( {
+                    map: sprite,
+                    size: 15,
+                    vertexColors: true,
+                    transparent: true
+                } );
 
 
                 particles = new THREE.ParticleSystem( geometry, material );
