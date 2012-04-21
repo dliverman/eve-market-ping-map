@@ -141,7 +141,17 @@ def websocket_worker(environ, start_response):
     subscriber.setsockopt(zmq.SUBSCRIBE, "")
 
     # This is a WebSocket object that we can send stuff over.
-    ws = environ["wsgi.websocket"]
+    try:
+        ws = environ["wsgi.websocket"]
+    except KeyError:
+        # This is not a websocket connection. Redir to the map.
+        start_response('301 Moved Permanently',
+            [
+                ('Content-Type', 'text/html'),
+                ('Location', 'http://map.eve-emdr.com/'),
+            ]
+        )
+        return ["Please see http://map.eve-emdr.com/"]
 
     while True:
         # This will block until messages arrive.
