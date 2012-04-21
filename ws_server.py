@@ -120,17 +120,6 @@ gevent.spawn(rebroadcaster_greenlet_loop)
 # WebSocket app, and the fun stuff #
 ####################################
 
-def map_ping_greenlet(system_id, ws):
-    """
-    This greenlet takes a system ID that we picked up over our inproc SUB
-    socket, and pushes it out over the websocket connection. This is currently
-    one message is one ping.
-
-    :param str system_id: The ID of the system to ping.
-    :param WebSocket ws: The websocket channel to send messages through.
-    """
-    ws.send(system_id)
-
 def websocket_worker(environ, start_response):
     """
     For each websocket connection, a websocket worker is spawned. Each worker
@@ -155,9 +144,10 @@ def websocket_worker(environ, start_response):
     ws = environ["wsgi.websocket"]
 
     while True:
-        # This will block until messages arrive, then dispatch the pinging to
-        # the map_ping_greenlet, which shoves the system ID out over websocket.
-        gevent.spawn(map_ping_greenlet, subscriber.recv(), ws)
+        # This will block until messages arrive.
+        system_id = subscriber.recv()
+        # Send the message
+        ws.send(system_id)
 
 #################################
 # Boring gevent webserver stuff #
