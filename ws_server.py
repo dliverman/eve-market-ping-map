@@ -60,7 +60,7 @@ receiver.setsockopt(zmq.SUBSCRIBE, "")
 # to an inproc PUB/SUB setup. This will keep us down to one TCP connection
 # that can service a large number of websocket connections.
 sender = context.socket(zmq.PUB)
-sender.bind('inproc://rebroadcaster')
+sender.bind('ipc:///tmp/emdr-map-rebroadcast.sock')
 
 #################
 # Rebroadcaster #
@@ -144,7 +144,7 @@ def websocket_worker(environ, start_response):
 
     # Connect to our in-process re-broadcaster, which pumps out parsed/prepped
     # system IDs that are ready for sending.
-    subscriber.connect('inproc://rebroadcaster')
+    subscriber.connect('ipc:///tmp/emdr-map-rebroadcast.sock')
     # Disable filtering.
     subscriber.setsockopt(zmq.SUBSCRIBE, "")
 
