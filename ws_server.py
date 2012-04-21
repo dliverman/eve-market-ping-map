@@ -62,6 +62,9 @@ receiver.setsockopt(zmq.SUBSCRIBE, "")
 sender = context.socket(zmq.PUB)
 sender.bind('ipc:///tmp/emdr-map-rebroadcast.sock')
 
+# Allows the IPC socket time to bind, I guess.
+gevent.sleep(1)
+
 #################
 # Rebroadcaster #
 #################
