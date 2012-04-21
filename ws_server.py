@@ -171,7 +171,7 @@ print("* Listening for websockets connections on port %s" % WEBSOCKET_PORT)
 print("=" * 80)
 
 server = pywsgi.WSGIServer(
-    ("", 9000),
+    ("", WEBSOCKET_PORT),
     websocket_worker,
     handler_class=WebSocketHandler
 )
