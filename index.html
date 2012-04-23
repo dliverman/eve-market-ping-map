@@ -188,8 +188,11 @@ function connect() {
         $('#connectionstatus').text("Connected");
     };
     socket.onmessage = function (evt) {
-        var sid = JSON.parse(evt.data);
-        systems[sid].ping();
+        var sids = JSON.parse(evt.data);
+        var i;
+        for (i in sids) {
+            systems[sids[i]].ping();
+        }
     };
     socket.onclose = function () {
         infoReconnect();
