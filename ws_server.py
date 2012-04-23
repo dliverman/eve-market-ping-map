@@ -105,8 +105,9 @@ def rebroadcaster_worker(message):
             system_id = int(raw_system_id)
             ids_to_send.append(system_id)
 
-    # Bombs away. Sends over the WebSocket connection.
-    sender.send(ujson.dumps(ids_to_send))
+    if ids_to_send:
+        # Bombs away. Sends over the WebSocket connection.
+        sender.send(ujson.dumps(ids_to_send))
 
 def rebroadcaster_greenlet_loop():
     """
