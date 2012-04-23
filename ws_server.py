@@ -4,7 +4,7 @@ connected users to light up systems.
 """
 import zlib
 import argparse
-import simplejson
+import ujson
 import gevent
 from gevent import pywsgi
 from gevent import monkey; gevent.monkey.patch_all()
@@ -80,7 +80,7 @@ def rebroadcaster_worker(message):
         Interchange format.
     """
     market_json = zlib.decompress(message)
-    market_data = simplejson.loads(market_json)
+    market_data = ujson.loads(market_json)
 
     result_type = market_data['resultType']
 
