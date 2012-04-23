@@ -88,6 +88,10 @@ def rebroadcaster_worker(message):
         # Pewp, we can't do anything with history messages.
         return
 
+    # A list that will contain the IDs of systems to ping. Gets serialized
+    # and sent once instead of for each ID.
+    ids_to_send = []
+
     for rowset in market_data['rowsets']:
         for row in rowset['rows']:
             # Column 10 is systemID. I know, hard-coded colum index.
@@ -98,9 +102,11 @@ def rebroadcaster_worker(message):
                 continue
 
             # Make absolutely sure this is an int.
-            system_id = str(int(raw_system_id))
-            # Bombs away. Sends over the WebSocket connection.
-            sender.send(system_id)
+            system_id = int(raw_system_id)
+            ids_to_send.append(system_id)
+
+    # Bombs away. Sends over the WebSocket connection.
+    sender.send(ujson.dumps(ids_to_send))
 
 def rebroadcaster_greenlet_loop():
     """
