@@ -1,3 +1,5 @@
+
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -33,217 +35,391 @@
 <body>
 
 <div id="info">
-    <a href="http://readthedocs.org/docs/eve-market-data-relay/en/latest/" target="_blank">EVE Market Data Relay</a>
-    - Relay Activity Map
+    <a href="http://readthedocs.org/docs/eve-market-data-relay/en/latest/" target="_blank">EVE Market Data Relay</a> - Relay Activity Map
     <div id="connectionstatus">
         Connecting to Relay
     </div>
+    <div id="activepings">Active:</div>
 </div>
-
 <script src="http://code.jquery.com/jquery-1.6.4.min.js"></script>
-<script src="js/Three.js"></script>
+<script src="http://map.eve-emdr.com/js/Three.js"></script>
 
-<script src="js/Detector.js"></script>
-<script src="js/Stats.js"></script>
+<script src="http://map.eve-emdr.com/js/Detector.js"></script>
+<script src="http://map.eve-emdr.com/js/Stats.js"></script>
+
+
+<script type="x-shader/x-vertex" id="vertexshader">
+
+    attribute float size;
+    attribute vec3 ca;
+
+    varying vec3 vColor;
+
+    void main() {
+
+    vColor = ca;
+
+    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+    //gl_PointSize = size;
+    gl_PointSize = size * ( 300.0 / length( mvPosition.xyz ) );
+
+    gl_Position = projectionMatrix * mvPosition;
+
+    }
+
+</script>
+
+<script type="x-shader/x-fragment" id="fragmentshader">
+
+    uniform vec3 color;
+    uniform sampler2D texture;
+
+    varying vec3 vColor;
+
+    void main() {
+
+    gl_FragColor = vec4( color * vColor, 1.0 );
+    gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
+
+    }
+
+</script>
 
 <script>
 
-    if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-    var container, stats;
-    var camera, scene, renderer, particles, geometry, material, i, h, color, colors = [], sprite, size, x, y, z;
-    var lat = 0, lon = 0;
-    var systems = {};
-    var time = Date.now();
+var container, stats;
+var camera, cameraTarget, scene, renderer, particles = false, geometry, material, i, h, color, colors = [], sprite, size, x, y, z;
 
-    init();
-    animate();
+var maxX = 0,maxY = 0,maxZ = 0;
 
-    loadsystem();
+var uniforms, attributes;
+var radius = 6371;
+var lat = 0, lon = 0;
+var systems = {};
+var firstTime = true;
+var allReady = false;
+var time = Date.now();
+var reconnectCountDown = 5;
 
-    function init() {
-
-        container = document.createElement( 'div' );
-        document.body.appendChild( container );
-
-        scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2( 0x000000, 0.0009 );
-
-        camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
-        camera.position.z = 500;
-        scene.add( camera );
-
-        //
-
-        renderer = new THREE.WebGLRenderer( { clearAlpha: 1 } );
-        renderer.setSize( window.innerWidth, window.innerHeight );
-        container.appendChild( renderer.domElement );
-
-        //
-
-        stats = new Stats();
-        stats.domElement.style.position = 'absolute';
-        stats.domElement.style.top = '0px';
-        container.appendChild( stats.domElement );
-
-        //
-
-        controls = new THREE.TrackballControls( camera );
-
-        controls.rotateSpeed = 1.0;
-        controls.zoomSpeed = 1.2;
-        controls.panSpeed = 0.8;
-
-        controls.noZoom = false;
-        controls.noPan = false;
-
-        controls.staticMoving = true;
-        controls.dynamicDampingFactor = 0.3;
-
-        controls.keys = [ 65, 83, 68 ];
+init();
+loadsystem();
+animate();
 
 
-        window.addEventListener( 'resize', onWindowResize, false );
+function getSecStatusColor(secStatus){
+    var secColors = [0xF00000, 0xD73000, 0xF04800, 0xF06000, 0xD77700, 0xEFEF00, 0x8FEF2F, 0x00F000, 0x00EF47, 0x48F0C0, 0x2FEFEF];
+    if (secStatus < 0) secStatus = 0;
+    nSecStatus = Math.round(secStatus * 10);
+    return secColors[nSecStatus];
+}
 
-        connect();
+function init() {
 
-    }
+    container = document.createElement( 'div' );
+    document.body.appendChild( container );
 
-    function connect() {
-        var socket = new WebSocket('ws://master.eve-emdr.com:9000/');
+    scene = new THREE.Scene();
+//		scene.fog = new THREE.FogExp2( 0x000000, 0.00001 );
 
-        socket.onopen = function () {
-            $('#connectionstatus').text("Connected");
-        };
-        socket.onmessage = function (evt) {
-            var sid = JSON.parse(evt.data);
-            systems[sid].ping();
-        };
-        socket.onclose = function () {
-            $('#connectionstatus').text("Connection Lost.  Reconnecting...");
-            setTimeout('connect()', 25000);
-        };
-    }
+    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.y = 600;
+    camera.position.z = 100;
+    camera.position.x = 0;
 
-    function onDocumentMouseDown( event ) {
-
-        event.preventDefault();
-
-        isUserInteracting = true;
-
-        onPointerDownPointerX = event.clientX;
-        onPointerDownPointerY = event.clientY;
-
-        onPointerDownLon = lon;
-        onPointerDownLat = lat;
-
-    }
-
-    function onDocumentMouseMove( event ) {
-
-        if ( isUserInteracting ) {
-
-            lon = ( onPointerDownPointerX - event.clientX ) * 0.1 + onPointerDownLon;
-            lat = ( event.clientY - onPointerDownPointerY ) * 0.1 + onPointerDownLat;
-
-        }
-    }
-
-    function onDocumentMouseUp( event ) {
-
-        isUserInteracting = false;
-
-    }
-
-    function onWindowResize( event ) {
-
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-
-        renderer.setSize( window.innerWidth, window.innerHeight );
-
-    }
+    scene.add( camera );
 
     //
 
-    function animate() {
+    renderer = new THREE.WebGLRenderer( { antialias: true, clearColor: 0x000000, clearAlpha: 0} );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    container.appendChild( renderer.domElement );
 
-        requestAnimationFrame( animate );
+    //
 
+    stats = new Stats();
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.top = '0px';
+    container.appendChild( stats.domElement );
+
+    //
+
+    controls = new THREE.TrackballControls( camera );
+
+    controls.rotateSpeed = 3.0;
+    controls.zoomSpeed = 5;
+    controls.panSpeed = 0.8;
+
+    controls.noZoom = false;
+    controls.noPan = false;
+
+    controls.staticMoving = true;
+    controls.dynamicDampingFactor = 0.3;
+
+    controls.keys = [ 65, 83, 68 ];
+
+
+    window.addEventListener( 'resize', onWindowResize, false );
+
+    var socket = new WebSocket('ws://master.eve-emdr.com:9000/');
+
+    connect();
+
+}
+
+function infoReconnect(){
+    if ( reconnectCountDown > 0 ){
+        reconnectCountDown--;
+        $('#connectionstatus').text("Connection Lost.  Reconnecting in " + reconnectCountDown);
+        setTimeout('infoReconnect()', 1000);
+    }
+    else {
+        reconnectCountDown = 5
+        connect();
+    }
+}
+
+function connect() {
+    var socket = new WebSocket('ws://master.eve-emdr.com:9000/');
+
+    socket.onopen = function () {
+        $('#connectionstatus').text("Connected");
+    };
+    socket.onmessage = function (evt) {
+        var sid = JSON.parse(evt.data);
+        systems[sid].ping();
+    };
+    socket.onclose = function () {
+        infoReconnect();
+    };
+}
+
+function onDocumentMouseDown( event ) {
+
+    event.preventDefault();
+
+    isUserInteracting = true;
+
+    onPointerDownPointerX = event.clientX;
+    onPointerDownPointerY = event.clientY;
+
+    onPointerDownLon = lon;
+    onPointerDownLat = lat;
+
+}
+
+function onDocumentMouseMove( event ) {
+
+    if ( isUserInteracting ) {
+
+        lon = ( onPointerDownPointerX - event.clientX ) * 0.1 + onPointerDownLon;
+        lat = ( event.clientY - onPointerDownPointerY ) * 0.1 + onPointerDownLat;
+
+    }
+}
+
+function onDocumentMouseUp( event ) {
+
+    isUserInteracting = false;
+
+}
+
+function onWindowResize( event ) {
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    if(particles){
         render();
-        stats.update();
-
     }
+    stats.update();
 
-    function render() {
-        var change = (Date.now() - time) / 60000.0;
-        time = Date.now();
-        var k;
-        for (k in systems) {
-            if (systems[k].lum > 0.25) {
-                systems[k].lum -= change;
-                if (systems[k].lum < 0.25) { systems[k].lum = 0.25; }
-                systems[k].color.setRGB(systems[k].lum,systems[k].lum,systems[k].lum);
+}
+
+function render() {
+    var nTime = Date.now()
+    var change = (nTime - time) / 60000.0;
+    time = nTime;
+    var k;
+    var i=0;
+    var active = 0;
+    var scolor;
+    for (k in systems) {
+        if (systems[k].lum > 0.25) {
+
+            systems[k].lum -= change;
+
+            if (systems[k].lum < 0.25) {
+                systems[k].lum = 0.25;
+                attributes.ca.value[systems[k].index].setRGB(systems[k].lum, systems[k].lum, systems[k].lum);
             }
+
+            else{
+                scolor = new THREE.Color( getSecStatusColor(systems[k].secStatus) );
+                attributes.ca.value[systems[k].index].setRGB(scolor.r, scolor.g, scolor.b);
+            }
+
+            attributes.size.value[ systems[k].index ] = 10 + ( systems[k].lum - 0.25) * ( 10 * Math.sin(time *0.005 ) )
+            active++;
         }
-        controls.update();
-        renderer.render( scene, camera );
-        stats.update();
 
     }
 
-    function loadsystem() {
-        $.getJSON('json/systems.json', function(data) {
-                geometry = new THREE.Geometry();
+    $('#activepings').text("Active: " + active);
+    controls.update();
 
-                sprite = THREE.ImageUtils.loadTexture( "textures/sprites/spark1.png" );
+    renderer.render( scene, camera );
+    stats.update();
 
-                var i;
-                for (i in data)
-                {
-                    x = data[i].x / 2e15;
-                    y = data[i].y / 2e15;
-                    z = data[i].z / 2e15;
+}
 
-                    vector = new THREE.Vector3( x, y, z );
-                    geometry.vertices.push( new THREE.Vertex( vector ) );
+function loadsystem() {
+    $.getJSON('json/systems.json', function(data) {
+        geometry = new THREE.Geometry();
 
-                    material = new THREE.ParticleBasicMaterial( { map: sprite, size: 15, vertexColors: true } );
+        attributes = {
 
-                    colors[ i ] = new THREE.Color( 0xffffff );
-                    colors[ i ].setRGB( 0.25, 0.25, 0.25 );
+            size: {	type: 'f', value: [] },
+            ca:   {	type: 'c', value: [] }
 
-                    systems[data[i].id] = {
-                        id: data[i].id,
-                        x: x,
-                        y: y,
-                        z: z,
-                        name: data[i].name,
-                        color: colors[i],
-                        lum: 0.25,
-                        ping: function () {
-                            this.color.setRGB(1.0,1.0,1.0);
-                            this.lum = 1.0;
-                        }
-                    };
-                }
+        };
 
-                geometry.colors = colors;
+        uniforms = {
 
-                material = new THREE.ParticleBasicMaterial( {
-                    map: sprite,
-                    size: 15,
-                    vertexColors: true,
-                    transparent: true
-                } );
+            amplitude: { type: "f", value: 1.0 },
+            color:	 { type: "c", value: new THREE.Color( 0xffffff ) },
+            texture:   { type: "t", value: 0, texture: THREE.ImageUtils.loadTexture( "textures/sprites/spark1.png" ) },
+
+        };
+
+        uniforms.texture.texture.wrapS = uniforms.texture.texture.wrapT = THREE.RepeatWrapping;
+
+        var shaderMaterial = new THREE.ShaderMaterial( {
+
+            uniforms: 		uniforms,
+            attributes:	 attributes,
+            vertexShader:   document.getElementById( 'vertexshader' ).textContent,
+            fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+            blending: THREE.AdditiveBlending
 
 
-                particles = new THREE.ParticleSystem( geometry, material );
-                particles.sortParticles = true;
-
-                scene.add( particles );
         });
-    }
+
+
+        var i;
+        var index = 0;
+        var values_size = attributes.size.value;
+        var values_color = attributes.ca.value;
+        var luminosity;
+
+        for (i in data)
+        {
+            x = data[i].x / 2e15;
+            y = data[i].y / 2e15;
+            z = data[i].z / 2e15;
+            luminosity = data[i].luminosity;
+
+            maxX = Math.max(x, maxX);
+            maxY = Math.max(y, maxY);
+            maxZ = Math.max(z, maxZ);
+
+            vector = new THREE.Vector3( x, y, z );
+            geometry.vertices.push( new THREE.Vertex( vector ) );
+
+
+            values_color[ i ] = new THREE.Color( getSecStatusColor(data[i].security_level) );
+            values_color[ i ].setRGB( 0.25, 0.25, 0.25 );
+            values_size[i]= 10;
+            systems[data[i].id] = {
+                id: data[i].id,
+                secStatus: data[i].security_level,
+                x: x,
+                y: y,
+                z: z,
+                index: index,
+                name: data[i].name,
+                lum: 0.25,
+                luminosity: luminosity,
+                ping: function () {
+                    this.lum = 1;
+                }
+            };
+            index++;
+        }
+
+        particles = new THREE.ParticleSystem( geometry, shaderMaterial );
+        particles.sortParticles = true;
+
+        scene.add( particles );
+
+
+        var i,
+                vector,
+                starsGeometry = new THREE.Geometry();
+
+        for ( i = 0; i < 10; i ++ ) {
+
+            vector = new THREE.Vector3( Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1 );
+            vector.multiplyScalar( 70 );
+
+            starsGeometry.vertices.push( new THREE.Vertex( vector ) );
+
+        }
+        /*				var g1,g2,g3;
+         g1  = THREE.ImageUtils.loadTexture( "textures/sprites/g1.jpg" );
+         g2  = THREE.ImageUtils.loadTexture( "textures/sprites/g2.jpg" );
+         g3  = THREE.ImageUtils.loadTexture( "textures/sprites/g3.jpg" );			*/
+
+        /*				var stars,
+         starsMaterials = [
+         new THREE.ParticleBasicMaterial( { color: 0x555555, size: 2, sizeAttenuation: false } ),
+         new THREE.ParticleBasicMaterial( { color: 0x555555, size: 1, sizeAttenuation: false } ),
+         new THREE.ParticleBasicMaterial( { color: 0x666666, map: g1, size: 60, sizeAttenuation: false } ),
+         new THREE.ParticleBasicMaterial( { color: 0x3a3a3a, size: 1, sizeAttenuation: false } ),
+         new THREE.ParticleBasicMaterial( { color: 0x333333, map: g2, size: 60, sizeAttenuation: false } ),
+         new THREE.ParticleBasicMaterial( { color: 0x333333, map: g3, size: 60, sizeAttenuation: false } )
+         ];*/
+
+        starsMaterials = [
+            new THREE.ParticleBasicMaterial( { color: 0x555555, size: 2, sizeAttenuation: false } ),
+            new THREE.ParticleBasicMaterial( { color: 0x555555, size: 1, sizeAttenuation: false } ),
+            new THREE.ParticleBasicMaterial( { color: 0x333333, size: 2, sizeAttenuation: false } ),
+            new THREE.ParticleBasicMaterial( { color: 0x3a3a3a, size: 1, sizeAttenuation: false } ),
+            new THREE.ParticleBasicMaterial( { color: 0x1a1a1a, size: 2, sizeAttenuation: false } ),
+            new THREE.ParticleBasicMaterial( { color: 0x1a1a1a, size: 1, sizeAttenuation: false } )
+        ];
+
+
+        for ( i = 10; i < 30; i ++ ) {
+
+            stars = new THREE.ParticleSystem( starsGeometry, starsMaterials[ i % 6] );
+
+            stars.rotation.x = Math.random() * 6;
+            stars.rotation.y = Math.random() * 6;
+            stars.rotation.z = Math.random() * 6;
+
+            var s = 100;
+            stars.scale.set( s, s, s );
+
+            stars.matrixAutoUpdate = false;
+            stars.updateMatrix();
+
+            scene.add( stars );
+
+        }
+
+    });
+}
 
 </script>
 </body>
