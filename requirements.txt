@@ -2,4 +2,4 @@ gevent
 gevent-websocket
 gevent-zeromq
 pyzmq
-simplejson
+ujson
