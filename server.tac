@@ -90,15 +90,22 @@ class MyZmqSubConnection(ZmqSubConnection):
         else:
             self.gotMessage(*reversed(message[0].split('\0', 1)))
 
-    def gotMessage(self, message, tag=None):
-        buf = ''
-        if tag:
-            buf += tag
-            buf += '\0'
+    def otherMessageReceived(self, message):
+        """
+        This doesn't appear to work, either.
+        """
+        # message is a list of some sort. not sure what it is.
+        self.gotMessage(message[0])
 
+    def gotMessage(self, message, tag=''):
+        if tag:
+            buf = tag
+        else:
+            buf = ''
+
+        buf += '\0'
         buf += message
 
-        print len(buf)
         outbound_msg = zlib.decompress(buf, -1)
 
         for session in SESSION_LIST:
