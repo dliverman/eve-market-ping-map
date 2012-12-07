@@ -6,9 +6,9 @@ import zlib
 import argparse
 import ujson
 import gevent
+import zmq.green as zmq
 from gevent import pywsgi
 from gevent import monkey; gevent.monkey.patch_all()
-from gevent_zeromq import zmq
 from geventwebsocket.handler import WebSocketHandler
 
 ##########

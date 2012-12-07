@@ -1,5 +1,4 @@
 gevent
 gevent-websocket
-gevent-zeromq
 pyzmq
 ujson
