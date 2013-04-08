@@ -165,9 +165,6 @@ def websocket_worker(environ, start_response):
         return ["Please see http://map.eve-emdr.com/"]
 
     while True:
-        if ws.fobj is None:
-            break
-
         # This will block until messages arrive.
         system_id = subscriber.recv()
         # Send the message
