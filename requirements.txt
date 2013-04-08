@@ -1,4 +1,4 @@
-gevent
-gevent-websocket
 pyzmq
 ujson
+gevent
+hg+https://bitbucket.org/Jeffrey/gevent-websocket

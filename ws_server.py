@@ -25,7 +25,7 @@ WEBSOCKET_PORT = 9000
 ##################
 
 parser = argparse.ArgumentParser(
-    description="Runs a websocket server, relaying market data pings to " \
+    description="Runs a websocket server, relaying market data pings to "
                 "a JS-based websockets map.",
 )
 
@@ -69,6 +69,7 @@ gevent.sleep(1)
 # Rebroadcaster #
 #################
 
+
 def rebroadcaster_worker(message):
     """
     This is ran as a greenlet that parses the incoming data, extracts the
@@ -109,6 +110,7 @@ def rebroadcaster_worker(message):
         # Bombs away. Sends over the WebSocket connection.
         sender.send(ujson.dumps(ids_to_send))
 
+
 def rebroadcaster_greenlet_loop():
     """
     This loop blocks the greenlet while waiting for something to come down
@@ -127,6 +129,7 @@ gevent.spawn(rebroadcaster_greenlet_loop)
 # WebSocket app, and the fun stuff #
 ####################################
 
+
 def websocket_worker(environ, start_response):
     """
     For each websocket connection, a websocket worker is spawned. Each worker
@@ -138,6 +141,7 @@ def websocket_worker(environ, start_response):
     on socket count. This also allows us to do the processing only once per
     connection.
     """
+
     context = zmq.Context()
     subscriber = context.socket(zmq.SUB)
 
@@ -161,10 +165,14 @@ def websocket_worker(environ, start_response):
         return ["Please see http://map.eve-emdr.com/"]
 
     while True:
+        if ws.fobj is None:
+            break
+
         # This will block until messages arrive.
         system_id = subscriber.recv()
         # Send the message
         ws.send(system_id)
+    ws.close()
 
 #################################
 # Boring gevent webserver stuff #
