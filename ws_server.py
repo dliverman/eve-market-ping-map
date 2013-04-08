@@ -9,6 +9,7 @@ import gevent
 import zmq.green as zmq
 from gevent import pywsgi
 from gevent import monkey; gevent.monkey.patch_all()
+from geventwebsocket import WebSocketError
 from geventwebsocket.handler import WebSocketHandler
 
 ##########
@@ -168,7 +169,10 @@ def websocket_worker(environ, start_response):
         # This will block until messages arrive.
         system_id = subscriber.recv()
         # Send the message
-        ws.send(system_id)
+        try:
+            ws.send(system_id)
+        except WebSocketError:
+            break
     ws.close()
 
 #################################
