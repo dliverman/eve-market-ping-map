@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"code.google.com/p/go.net/websocket"
+	"compress/zlib"
 	zmq "github.com/alecthomas/gozmq"
+	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -30,13 +34,25 @@ func relayListenerRoutine() {
 	println("Listening on port 8050...")
 
 	for {
-		msg, zmq_err := receiver.Recv(0)
+		emdrMsg, emdrErr := receiver.Recv(0)
 
-		if zmq_err != nil {
-			println("RECV ERROR:", zmq_err.Error())
+		if emdrErr != nil {
+			println("EMDR error:", emdrErr.Error())
+		}
+		msgReader := bytes.NewReader(emdrMsg)
+
+		r, zl_rr := zlib.NewReader(msgReader)
+		if zl_rr != nil {
+			println("ZL ERROR:", zl_rr.Error())
 		}
 
-		println("%v", msg)
+		var out bytes.Buffer
+		io.Copy(&out, r)
+
+		os.Stdout.Write(out.Bytes())
+
+		//println("%v", decomp)
+		r.Close()
 		//sender.Send(msg, 0)
 
 	}
