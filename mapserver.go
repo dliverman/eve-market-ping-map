@@ -23,17 +23,22 @@ func main() {
 	}
 }
 
+type Row []interface{}
+
+type RowSet struct {
+	//GeneratedAt string
+	//RegionId    int
+	//TypeId      int
+	Rows []Row
+}
+
 type Message struct {
 	ResultType string
 	//Version     string
 	//Generator   map[string]string
 	//UploadKeys  []map[string]string
 	//CurrentTime string
-	RowSets []struct {
-		GeneratedAt string
-		//RegionId    int
-		Rows [][]interface{}
-	}
+	RowSets []RowSet
 }
 
 func relayListenerRoutine() {
@@ -63,6 +68,7 @@ func relayListenerRoutine() {
 		var out bytes.Buffer
 		io.Copy(&out, r)
 		r.Close()
+		//log.Printf("%s", out)
 
 		var msg Message
 		jsonErr := json.Unmarshal([]byte(out.String()), &msg)
@@ -74,7 +80,13 @@ func relayListenerRoutine() {
 			continue
 		}
 
-		log.Printf("%v", msg.RowSets)
+		for _, rowset := range msg.RowSets {
+
+			//r2 := rowset.Rows.([]interface{})
+			for _, row := range rowset.Rows {
+				log.Printf("%1.0f", row[10])
+			}
+		}
 	}
 
 }
