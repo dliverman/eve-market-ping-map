@@ -5,18 +5,21 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"compress/zlib"
 	"encoding/json"
+	"fmt"
 	zmq "github.com/alecthomas/gozmq"
 	"io"
 	"log"
 	"net/http"
-	//"os"
+	"strconv"
 )
+
+var connections []*websocket.Conn
 
 func main() {
 
 	go relayListenerRoutine()
 
-	http.Handle("/websocket/", websocket.Handler(handleWSConnection))
+	http.Handle("/", websocket.Handler(handleWSConnection))
 	err := http.ListenAndServe(":9000", nil)
 	if err != nil {
 		log.Fatal("%v", err)
@@ -24,21 +27,12 @@ func main() {
 }
 
 type Row []interface{}
-
 type RowSet struct {
-	//GeneratedAt string
-	//RegionId    int
-	//TypeId      int
 	Rows []Row
 }
-
 type Message struct {
 	ResultType string
-	//Version     string
-	//Generator   map[string]string
-	//UploadKeys  []map[string]string
-	//CurrentTime string
-	RowSets []RowSet
+	RowSets    []RowSet
 }
 
 func relayListenerRoutine() {
@@ -80,21 +74,23 @@ func relayListenerRoutine() {
 			continue
 		}
 
+		var sysIds []int
+		systemsPresent := false
 		for _, rowset := range msg.RowSets {
-
-			//r2 := rowset.Rows.([]interface{})
 			for _, row := range rowset.Rows {
-				log.Printf("%1.0f", row[10])
+				sysidstr := fmt.Sprintf("%1.0f", row[10])
+				sysid, _ := strconv.Atoi(sysidstr)
+				sysIds = append(sysIds, sysid)
+				systemsPresent = true
 			}
+		}
+		if systemsPresent {
+			//log.Println(sysIds)
 		}
 	}
 
 }
 
 func handleWSConnection(ws *websocket.Conn) {
-	go wsConnectionEchoRoutine(ws)
-}
-
-func wsConnectionEchoRoutine(ws *websocket.Conn) {
-
+	println("Connection!")
 }
