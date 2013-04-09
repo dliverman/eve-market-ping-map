@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"code.google.com/p/go.net/websocket"
 	"compress/zlib"
+	"encoding/json"
 	zmq "github.com/alecthomas/gozmq"
 	"io"
 	"log"
 	"net/http"
-	"os"
+	//"os"
 )
 
 func main() {
@@ -48,13 +49,26 @@ func relayListenerRoutine() {
 
 		var out bytes.Buffer
 		io.Copy(&out, r)
-
-		os.Stdout.Write(out.Bytes())
-
-		//println("%v", decomp)
 		r.Close()
-		//sender.Send(msg, 0)
 
+		var f interface{}
+		jsonErr := json.Unmarshal([]byte(out.String()), &f)
+		if jsonErr != nil {
+			println("JSON ERROR:", jsonErr.Error())
+		}
+
+		m := f.(map[string]interface{})
+
+		resultType := m["resultType"]
+		if resultType == "history" {
+			continue
+		}
+		log.Printf("%T", m["rowsets"])
+
+		t := m["rowsets"].([]interface{})
+		for k, v := range t {
+			log.Printf("%s:%T", k, v)
+		}
 	}
 
 }
