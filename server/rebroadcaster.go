@@ -2,29 +2,13 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go.net/websocket"
 	"compress/zlib"
 	"encoding/json"
 	"fmt"
 	zmq "github.com/alecthomas/gozmq"
 	"io"
-	"log"
-	"net/http"
 	"strconv"
 )
-
-var connections []*websocket.Conn
-
-func main() {
-
-	go relayListenerRoutine()
-
-	http.Handle("/", websocket.Handler(handleWSConnection))
-	err := http.ListenAndServe(":9000", nil)
-	if err != nil {
-		log.Fatal("%v", err)
-	}
-}
 
 type Row []interface{}
 type RowSet struct {
@@ -79,6 +63,8 @@ func relayListenerRoutine() {
 		for _, rowset := range msg.RowSets {
 			for _, row := range rowset.Rows {
 				sysidstr := fmt.Sprintf("%1.0f", row[10])
+				// Temporary, fix this!
+				h.broadcast <- sysidstr
 				sysid, _ := strconv.Atoi(sysidstr)
 				sysIds = append(sysIds, sysid)
 				systemsPresent = true
@@ -89,8 +75,4 @@ func relayListenerRoutine() {
 		}
 	}
 
-}
-
-func handleWSConnection(ws *websocket.Conn) {
-	println("Connection!")
 }
