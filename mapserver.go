@@ -23,6 +23,19 @@ func main() {
 	}
 }
 
+type Message struct {
+	ResultType string
+	//Version     string
+	//Generator   map[string]string
+	//UploadKeys  []map[string]string
+	//CurrentTime string
+	RowSets []struct {
+		GeneratedAt string
+		//RegionId    int
+		Rows [][]interface{}
+	}
+}
+
 func relayListenerRoutine() {
 	context, _ := zmq.NewContext()
 
@@ -51,24 +64,17 @@ func relayListenerRoutine() {
 		io.Copy(&out, r)
 		r.Close()
 
-		var f interface{}
-		jsonErr := json.Unmarshal([]byte(out.String()), &f)
+		var msg Message
+		jsonErr := json.Unmarshal([]byte(out.String()), &msg)
 		if jsonErr != nil {
 			println("JSON ERROR:", jsonErr.Error())
 		}
 
-		m := f.(map[string]interface{})
-
-		resultType := m["resultType"]
-		if resultType == "history" {
+		if msg.ResultType != "orders" {
 			continue
 		}
-		log.Printf("%T", m["rowsets"])
 
-		t := m["rowsets"].([]interface{})
-		for k, v := range t {
-			log.Printf("%s:%T", k, v)
-		}
+		log.Printf("%v", msg)
 	}
 
 }
