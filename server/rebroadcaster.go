@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
-	"fmt"
 	zmq "github.com/alecthomas/gozmq"
 	"io"
-	"strconv"
+	"log"
 )
 
 type Row []interface{}
@@ -26,9 +25,6 @@ func relayListenerRoutine() {
 	receiver.SetSockOptString(zmq.SUBSCRIBE, "")
 	//receiver.Connect("tcp://master.eve-emdr.com:8050")
 	receiver.Connect("tcp://secondary.eve-emdr.com:8050")
-	//receiver.Connect("tcp://relay-us-central-1.eve-emdr.com:8050")
-
-	println("Listening on port 8050...")
 
 	for {
 		emdrMsg, emdrErr := receiver.Recv(0)
@@ -46,7 +42,6 @@ func relayListenerRoutine() {
 		var out bytes.Buffer
 		io.Copy(&out, r)
 		r.Close()
-		//log.Printf("%s", out)
 
 		var msg Message
 		jsonErr := json.Unmarshal([]byte(out.String()), &msg)
@@ -62,16 +57,15 @@ func relayListenerRoutine() {
 		systemsPresent := false
 		for _, rowset := range msg.RowSets {
 			for _, row := range rowset.Rows {
-				sysidstr := fmt.Sprintf("%1.0f", row[10])
-				// Temporary, fix this!
-				h.broadcast <- sysidstr
-				sysid, _ := strconv.Atoi(sysidstr)
-				sysIds = append(sysIds, sysid)
+				sysId := int(row[10].(float64))
+				sysIds = append(sysIds, sysId)
 				systemsPresent = true
 			}
 		}
 		if systemsPresent {
-			//log.Println(sysIds)
+			sJson, _ := json.Marshal(sysIds)
+			log.Printf("%s", sJson)
+			h.broadcast <- string(sJson)
 		}
 	}
 
