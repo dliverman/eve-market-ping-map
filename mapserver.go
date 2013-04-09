@@ -74,7 +74,7 @@ func relayListenerRoutine() {
 			continue
 		}
 
-		log.Printf("%v", msg)
+		log.Printf("%v", msg.RowSets)
 	}
 
 }
