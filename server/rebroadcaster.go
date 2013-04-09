@@ -53,16 +53,15 @@ func relayListenerRoutine() {
 			continue
 		}
 
-		var sysIds []int
-		systemsPresent := false
+		sysIdSet := NewSystemIdSet()
 		for _, rowset := range msg.RowSets {
 			for _, row := range rowset.Rows {
-				sysId := int(row[10].(float64))
-				sysIds = append(sysIds, sysId)
-				systemsPresent = true
+				sysId := int64(row[10].(float64))
+				sysIdSet.AddSysId(sysId)
 			}
 		}
-		if systemsPresent {
+		if sysIdSet.SystemsPresent {
+			sysIds := sysIdSet.GetList()
 			sJson, _ := json.Marshal(sysIds)
 			log.Printf("%s", sJson)
 			h.broadcast <- string(sJson)
