@@ -16,7 +16,7 @@ Each dot fades over about a minute.
 Powered by
 ----------
 
-WebSockets, Python+gevent+ZeroMQ, and S3 for hosting of the static assets.
+WebSockets, GoLang, and S3 for hosting of the static assets.
 
 License
 -------
